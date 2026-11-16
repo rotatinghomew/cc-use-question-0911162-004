@@ -1,0 +1,158 @@
+{
+  "scenario": "跨境人工智能数据血缘与撤回影响控制台",
+  "synthetic": true,
+  "records": [
+    {
+      "record_id": "data_asset-001",
+      "payload": {
+        "asset_id": "asset_id-0",
+        "owner_group": "owner_group-1",
+        "purpose_code": "purpose_code-2",
+        "row_count": 17.7,
+        "sensitive_share": 0.69,
+        "licensed_purposes": "licensed_purposes-0",
+        "schema_version": "schema_version-1",
+        "missing_rate": 25.3,
+        "privacy_k": 27.2,
+        "privacy_l": 29.1,
+        "revocation_count": 31.0,
+        "review_authority": "review_authority-1"
+      },
+      "state": "registered",
+      "source": "synthetic-local-acceptance"
+    },
+    {
+      "record_id": "data_asset-002",
+      "payload": {
+        "asset_id": "asset_id-1",
+        "owner_group": "owner_group-2",
+        "purpose_code": "purpose_code-3",
+        "row_count": 21.4,
+        "sensitive_share": 0.8,
+        "licensed_purposes": "licensed_purposes-1",
+        "schema_version": "schema_version-2",
+        "missing_rate": 29.0,
+        "privacy_k": 30.9,
+        "privacy_l": 32.8,
+        "revocation_count": 34.7,
+        "review_authority": "review_authority-2"
+      },
+      "state": "registered",
+      "source": "synthetic-local-acceptance"
+    },
+    {
+      "record_id": "data_asset-003",
+      "payload": {
+        "asset_id": "asset_id-2",
+        "owner_group": "owner_group-3",
+        "purpose_code": "purpose_code-4",
+        "row_count": 25.1,
+        "sensitive_share": 0.91,
+        "licensed_purposes": "licensed_purposes-2",
+        "schema_version": "schema_version-3",
+        "missing_rate": 32.7,
+        "privacy_k": 34.6,
+        "privacy_l": 36.5,
+        "revocation_count": 38.4,
+        "review_authority": "review_authority-3"
+      },
+      "state": "registered",
+      "source": "synthetic-local-acceptance"
+    },
+    {
+      "record_id": "data_asset-004",
+      "payload": {
+        "asset_id": "asset_id-3",
+        "owner_group": "owner_group-4",
+        "purpose_code": "purpose_code-0",
+        "row_count": 28.8,
+        "sensitive_share": 0.25,
+        "licensed_purposes": "licensed_purposes-3",
+        "schema_version": "schema_version-4",
+        "missing_rate": 36.4,
+        "privacy_k": 38.3,
+        "privacy_l": 40.2,
+        "revocation_count": 42.1,
+        "review_authority": "review_authority-4"
+      },
+      "state": "registered",
+      "source": "synthetic-local-acceptance"
+    },
+    {
+      "record_id": "data_asset-005",
+      "payload": {
+        "asset_id": "asset_id-4",
+        "owner_group": "owner_group-0",
+        "purpose_code": "purpose_code-1",
+        "row_count": 32.5,
+        "sensitive_share": 0.36,
+        "licensed_purposes": "licensed_purposes-4",
+        "schema_version": "schema_version-0",
+        "missing_rate": 40.1,
+        "privacy_k": 42.0,
+        "privacy_l": 43.9,
+        "revocation_count": 45.8,
+        "review_authority": "review_authority-0"
+      },
+      "state": "registered",
+      "source": "synthetic-local-acceptance"
+    },
+    {
+      "record_id": "data_asset-006",
+      "payload": {
+        "asset_id": "asset_id-0",
+        "owner_group": "owner_group-1",
+        "purpose_code": "purpose_code-2",
+        "row_count": 36.2,
+        "sensitive_share": 0.47,
+        "licensed_purposes": "licensed_purposes-0",
+        "schema_version": "schema_version-1",
+        "missing_rate": 43.8,
+        "privacy_k": 45.7,
+        "privacy_l": 47.6,
+        "revocation_count": 49.5,
+        "review_authority": "review_authority-1"
+      },
+      "state": "registered",
+      "source": "synthetic-local-acceptance"
+    },
+    {
+      "record_id": "data_asset-007",
+      "payload": {
+        "asset_id": "asset_id-1",
+        "owner_group": "owner_group-2",
+        "purpose_code": "purpose_code-3",
+        "row_count": 39.9,
+        "sensitive_share": 0.58,
+        "licensed_purposes": "licensed_purposes-1",
+        "schema_version": "schema_version-2",
+        "missing_rate": 47.5,
+        "privacy_k": 49.4,
+        "privacy_l": 51.3,
+        "revocation_count": 53.2,
+        "review_authority": "review_authority-2"
+      },
+      "state": "registered",
+      "source": "synthetic-local-acceptance"
+    },
+    {
+      "record_id": "data_asset-008",
+      "payload": {
+        "asset_id": "asset_id-2",
+        "owner_group": "owner_group-3",
+        "purpose_code": "purpose_code-4",
+        "row_count": 43.6,
+        "sensitive_share": 0.69,
+        "licensed_purposes": "licensed_purposes-2",
+        "schema_version": "schema_version-3",
+        "missing_rate": 51.2,
+        "privacy_k": 53.1,
+        "privacy_l": 55.0,
+        "revocation_count": 56.9,
+        "review_authority": "review_authority-3"
+      },
+      "state": "registered",
+      "source": "synthetic-local-acceptance"
+    }
+  ]
+}
