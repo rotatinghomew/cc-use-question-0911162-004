@@ -123,7 +123,7 @@ class Repository:
 
     def save_record(self, record: DomainRecord, expected_version: int | None = None) -> str:
         with self.transaction() as connection:
-            current = connection.execute("SELECT version,fingerprint FROM records WHERE record_id=?", (record.record_id,)).fetchone()
+            current = connection.execute("SELECT version,fingerprint,payload_json FROM records WHERE record_id=?", (record.record_id,)).fetchone()
             if current and expected_version is not None and current[0] != expected_version:
                 raise ContractError("optimistic version conflict")
             if current and current[1] == record.fingerprint:
@@ -131,13 +131,24 @@ class Repository:
             if current and record.version <= current[0]:
                 raise ContractError("record version must advance")
             payload = canonical_json(record.payload)
+            previous_revocation = None
+            if current:
+                try:
+                    previous_revocation = json.loads(current[2]).get("revocation_count")
+                except (TypeError, ValueError, AttributeError):
+                    previous_revocation = None
             connection.execute("INSERT INTO records(record_id,version,state,payload_json,fingerprint,occurred_at,source,updated_at) VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(record_id) DO UPDATE SET version=excluded.version,state=excluded.state,payload_json=excluded.payload_json,fingerprint=excluded.fingerprint,occurred_at=excluded.occurred_at,source=excluded.source,updated_at=excluded.updated_at",
                                (record.record_id, record.version, record.state, payload, record.fingerprint,
                                 record.occurred_at, record.source, utc_now()))
             connection.execute("INSERT INTO record_versions(record_id,version,state,payload_json,fingerprint,stored_at) VALUES(?,?,?,?,?,?)",
                                (record.record_id, record.version, record.state, payload, record.fingerprint, utc_now()))
+            revocation = record.payload.get("revocation_count")
             self.append_event(connection, "record.saved", record.record_id, record.version,
-                              {"state": record.state, "fingerprint": record.fingerprint})
+                              {"state": record.state, "fingerprint": record.fingerprint,
+                               "revocation_count": revocation,
+                               "previous_revocation_count": previous_revocation,
+                               "withdrawal_changed": previous_revocation is not None
+                               and revocation != previous_revocation})
             return record.fingerprint
 
     def get_record(self, record_id: str) -> DomainRecord | None:
@@ -185,8 +196,9 @@ class Repository:
             if owns:
                 connection.close()
 
-    def begin_run(self, fixture_hash: str, record_count: int) -> str:
-        run_id = stable_hash({"fixture_hash": fixture_hash, "record_count": record_count})[:24]
+    def begin_run(self, fixture_hash: str, record_count: int, analysis_version: str = "v1") -> str:
+        run_id = stable_hash({"fixture_hash": fixture_hash, "record_count": record_count,
+                              "analysis_version": analysis_version})[:24]
         with self.transaction() as connection:
             row = connection.execute("SELECT fixture_hash,record_count FROM runs WHERE run_id=?", (run_id,)).fetchone()
             if row and (row[0] != fixture_hash or row[1] != record_count):
@@ -236,6 +248,26 @@ class Repository:
                       for table in ("records", "record_versions", "decisions", "events", "runs")}
             states = {row[0]: row[1] for row in connection.execute("SELECT state,COUNT(*) FROM records GROUP BY state")}
         return {"counts": counts, "states": states, "chain_errors": self.verify_chain()}
+
+    def run_versions(self) -> list[dict[str, Any]]:
+        """Report the analysis basis recorded for each completed run.
+
+        Historical runs are never rewritten; callers use this to show that a
+        decision was produced under an older measurement basis.
+        """
+        with self.connect() as connection:
+            rows = connection.execute("SELECT run_id,fixture_hash,status,result_json,finished_at FROM runs ORDER BY started_at, run_id").fetchall()
+        results = []
+        for row in rows:
+            try:
+                result = json.loads(row["result_json"] or "{}")
+            except ValueError:
+                result = {}
+            results.append({"run_id": row["run_id"], "fixture_hash": row["fixture_hash"],
+                            "status": row["status"],
+                            "analysis_version": result.get("analysis_version"),
+                            "finished_at": row["finished_at"]})
+        return results
 
     def decision_rows(self) -> list[dict[str, Any]]:
         with self.connect() as connection:

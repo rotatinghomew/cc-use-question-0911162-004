@@ -161,6 +161,7 @@ class Decision:
     rule_results: tuple[RuleResult, ...]
     metrics: dict[str, float]
     decided_at: str = field(default_factory=utc_now)
+    evidence: dict[str, Any] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "record_id", identifier(self.record_id))
@@ -177,7 +178,7 @@ class Decision:
     def as_dict(self) -> dict[str, Any]:
         return {"record_id": self.record_id, "outcome": self.outcome, "score": self.score,
                 "reasons": list(self.reasons), "rules": [item.as_dict() for item in self.rule_results],
-                "metrics": self.metrics, "decided_at": self.decided_at}
+                "metrics": self.metrics, "evidence": self.evidence, "decided_at": self.decided_at}
 
 
 def require_fields(record: DomainRecord, fields: Iterable[str] = REQUIRED_FIELDS) -> list[str]:

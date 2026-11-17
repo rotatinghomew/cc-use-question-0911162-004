@@ -20,15 +20,38 @@ def write_json(path: Path, value: Any) -> str:
     return stable_hash(value)
 
 
+RECORD_FIELDS = ["record_id", "state", "version", "source", "fingerprint", "outcome", "score",
+                 "observed_records", "retained_records", "withdrawal_share", "missing_rate",
+                 "missing_low", "missing_high", "privacy_k_low", "privacy_k_high", "estimable"]
+
+
+def _cell(value: Any) -> Any:
+    if value is None:
+        return ""
+    if isinstance(value, float):
+        return round(value, 6)
+    return value
+
+
 def write_records(path: Path, records: Iterable[DomainRecord], decisions: Mapping[str, Decision]) -> int:
     rows = []
     for record in records:
         decision = decisions.get(record.record_id)
+        cohort = (decision.evidence.get("cohort") if decision else None) or {}
         rows.append({"record_id": record.record_id, "state": record.state, "version": record.version,
                      "source": record.source, "fingerprint": record.fingerprint,
-                     "outcome": decision.outcome if decision else "", "score": decision.score if decision else ""})
+                     "outcome": decision.outcome if decision else "", "score": decision.score if decision else "",
+                     "observed_records": _cell(cohort.get("observed_records")),
+                     "retained_records": _cell(cohort.get("retained_records")),
+                     "withdrawal_share": _cell(cohort.get("withdrawal_share")),
+                     "missing_rate": _cell(cohort.get("missing_rate")),
+                     "missing_low": _cell(cohort.get("missing_low")),
+                     "missing_high": _cell(cohort.get("missing_high")),
+                     "privacy_k_low": _cell(cohort.get("privacy_k_low")),
+                     "privacy_k_high": _cell(cohort.get("privacy_k_high")),
+                     "estimable": _cell(cohort.get("estimable"))})
     with path.open("w", encoding="utf-8", newline="") as handle:
-        writer = csv.DictWriter(handle, fieldnames=["record_id", "state", "version", "source", "fingerprint", "outcome", "score"])
+        writer = csv.DictWriter(handle, fieldnames=RECORD_FIELDS)
         writer.writeheader()
         writer.writerows(rows)
     return len(rows)
@@ -52,8 +75,11 @@ def build_summary(records: list[DomainRecord], decisions: Mapping[str, Decision]
     for decision in decisions.values():
         outcomes[decision.outcome] = outcomes.get(decision.outcome, 0) + 1
     scores = [decision.score for decision in decisions.values()]
+    estimable = sum(bool(decision.evidence.get("evidence_estimable")) for decision in decisions.values())
     return {"product": '跨境人工智能数据血缘与撤回影响控制台', "entity": 'data_asset', "generated_at": utc_now(),
             "record_count": len(records), "decision_count": len(decisions), "outcomes": outcomes,
+            "estimable_decisions": estimable,
+            "unestimated_decisions": len(decisions) - estimable,
             "average_score": sum(scores) / len(scores) if scores else 0.0,
             "minimum_score": min(scores) if scores else 0.0, "maximum_score": max(scores) if scores else 0.0,
             "repository": snapshot}

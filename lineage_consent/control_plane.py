@@ -8,9 +8,15 @@ from lineage_consent.assets.asset_contract import ContractError, Decision, Domai
 from lineage_consent.lineage.lineage_store import Repository
 from lineage_consent.revocation.impact_flow import advance_for_outcome, decide
 from lineage_consent.release.manifest import export_bundle, verify_bundle
-from lineage_consent.privacy.group_guard import derive_context
+from lineage_consent.privacy import group_guard
 
 from lineage_consent.release_signal.release_risk import augment_context
+
+# Identifies the measurement basis used for a run.  A change in the group /
+# withdrawal / release-signal methodology changes this value so a completed run
+# recorded under an older basis is not silently replayed as current evidence.
+ANALYSIS_VERSION = "group-basis-v2"
+
 
 class Application:
     def __init__(self, database: str | Path, context: Mapping[str, Any] | None = None):
@@ -32,7 +38,7 @@ class Application:
     def process(self, record: DomainRecord) -> tuple[DomainRecord, Decision]:
         stored = self.ingest(record)
         context = dict(self.context)
-        context.update(derive_context(stored, self.repository))
+        context.update(group_guard.derive_context(stored, self.repository))
         context.update(augment_context(stored, self.repository))
         decision = decide(stored, context)
         self.repository.save_decision(decision)
@@ -44,10 +50,14 @@ class Application:
     def run_fixture(self, fixture: Mapping[str, Any], output: str | Path) -> dict[str, Any]:
         records = records_from_fixture(fixture)
         fixture_hash = stable_hash(fixture)
-        run_id = self.repository.begin_run(fixture_hash, len(records))
+        run_id = self.repository.begin_run(fixture_hash, len(records), analysis_version=ANALYSIS_VERSION)
         completed = self.repository.completed_run(run_id)
         if completed is not None:
-            return completed
+            if completed.get("analysis_version") == ANALYSIS_VERSION:
+                return completed
+            # Same run identity but a different measurement basis: refuse to
+            # replay stale evidence and refuse to overwrite the finished run.
+            raise ContractError("completed run uses a different analysis basis")
         decisions: dict[str, Decision] = {}
         final_records: list[DomainRecord] = []
         for record in records:
@@ -58,13 +68,16 @@ class Application:
         if snapshot["chain_errors"]:
             raise ContractError("audit chain verification failed")
         manifest = export_bundle(output, final_records, decisions, snapshot, self.repository.event_rows())
-        result = {"run_id": run_id, "fixture_hash": fixture_hash, "records": len(final_records),
+        result = {"run_id": run_id, "fixture_hash": fixture_hash,
+                  "analysis_version": ANALYSIS_VERSION, "records": len(final_records),
                   "decisions": len(decisions), "manifest": manifest, "snapshot": snapshot}
         self.repository.finish_run(run_id, result)
         return result
 
     def inspect(self) -> dict[str, Any]:
-        return {"snapshot": self.repository.snapshot(), "records": [record.__dict__ for record in self.repository.list_records()],
+        return {"snapshot": self.repository.snapshot(), "analysis_version": ANALYSIS_VERSION,
+                "runs": self.repository.run_versions(),
+                "records": [record.__dict__ for record in self.repository.list_records()],
                 "decisions": self.repository.decision_rows()}
 
 

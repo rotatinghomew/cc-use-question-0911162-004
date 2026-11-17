@@ -1140,10 +1140,25 @@ def decide(record: DomainRecord, context: Mapping[str, Any] | None = None) -> De
     guards = guard_report(record, context)
     effective_score = scorecard['score'] * 0.65 + float(context.get('domain_signal', 0.5)) * 0.35
     critical = sum(item.severity == 'critical' for item in rules)
+    evidence = {
+        'release': dict(context.get('release_evidence') or {}),
+        'cohort': dict(context.get('_cohort_metrics') or {}),
+        'stratified': dict(context.get('_stratified_gap') or {}),
+        'domain_signal': float(context.get('domain_signal', 0.5)),
+        'domain_severity': context.get('domain_severity', 'info'),
+        'evidence_estimable': bool(context.get('evidence_estimable', True)),
+        'record_estimable': bool(context.get('record_estimable', True)),
+        'stratified_comparable': bool(context.get('stratified_comparable', True)),
+        'withdrawal_share': context.get('withdrawal_share'),
+        'observed_records': context.get('observed_records'),
+        'retained_records': context.get('retained_records'),
+    }
     if context.get('domain_severity') == 'critical':
         outcome = 'hold'
     elif critical:
         outcome = 'hold'
+    elif not evidence['evidence_estimable'] and context.get('_cohort_metrics') is not None:
+        outcome = 'review'
     elif effective_score >= float(context.get('approve_threshold', 0.62)) and guards['passed'] >= guards['failed']:
         outcome = 'approve'
     elif effective_score >= float(context.get('review_threshold', 0.38)):
@@ -1151,13 +1166,18 @@ def decide(record: DomainRecord, context: Mapping[str, Any] | None = None) -> De
     else:
         outcome = 'reject'
     reasons = (f"score={effective_score:.6f}", f"critical={critical}",
-               f"guards={guards['passed']}/{guards['passed'] + guards['failed']}")
-    return Decision(record.record_id, outcome, effective_score, reasons, rules, scorecard['metrics'])
+               f"guards={guards['passed']}/{guards['passed'] + guards['failed']}",
+               f"evidence_estimable={evidence['evidence_estimable']}")
+    return Decision(record.record_id, outcome, effective_score, reasons, rules, scorecard['metrics'], evidence=evidence)
 
 def advance_for_outcome(record: DomainRecord, decision: Decision) -> DomainRecord:
+    """Apply outcome-driven lifecycle advancement only.
+
+    ``hold`` is an unresolved review state, not a revocation.  Silently
+    rewriting a held record to ``revoked`` would fabricate history; the raw
+    withdrawal count and the audit events remain the record of what happened.
+    """
     current = STATES.index(record.state)
     if decision.outcome == 'approve' and current + 1 < len(STATES):
         return record.with_state(STATES[current + 1])
-    if decision.outcome == 'hold' and STATES[-1] != record.state:
-        return record.with_state(STATES[-1])
     return record
